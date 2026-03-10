@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>星伴 SparkMate | SRTP 项目说明</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    :root {
+      --bg: #fbfbfb;
+      --surface: #ffffff;
+      --surface-soft: rgba(255, 255, 255, 0.72);
+      --text: #111827;
+      --muted: #6b7280;
+      --line: rgba(229, 231, 235, 0.92);
+      --line-strong: rgba(209, 213, 219, 0.9);
+      --black: #000000;
+      --mesh-a: rgba(255, 168, 108, 0.12);
+      --mesh-b: rgba(144, 219, 184, 0.1);
+      --mesh-c: rgba(156, 163, 255, 0.09);
+      --mesh-d: rgba(255, 214, 102, 0.07);
+      --shadow: 0 4px 40px rgba(0, 0, 0, 0.03);
+      --radius-xl: 24px;
+      --radius-lg: 16px;
+      --radius-pill: 999px;
+      --container: 1180px;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 8% 8%, var(--mesh-a), transparent 24%),
+        radial-gradient(circle at 85% 18%, var(--mesh-b), transparent 26%),
+        radial-gradient(circle at 82% 72%, var(--mesh-c), transparent 28%),
+        radial-gradient(circle at 24% 92%, var(--mesh-d), transparent 22%),
+        var(--bg);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      line-height: 1.78;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .page-shell {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .noise {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.02;
+      background-image:
+        radial-gradient(circle at 20% 20%, rgba(0, 0, 0, 0.22) 0.6px, transparent 0.7px),
+        radial-gradient(circle at 60% 40%, rgba(0, 0, 0, 0.16) 0.6px, transparent 0.7px),
+        radial-gradient(circle at 80% 75%, rgba(0, 0, 0, 0.18) 0.6px, transparent 0.7px);
+      background-size: 22px 22px, 31px 31px, 27px 27px;
+      z-index: 0;
+    }
+
+    .container {
+      width: min(var(--container), calc(100% - 32px));
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      -webkit-backdrop-filter: blur(18px);
+      backdrop-filter: blur(18px);
+      background: rgba(251, 251, 251, 0.92);
+      border-bottom: 1px solid rgba(229, 231, 235, 0.8);
+    }
+
+    .topbar-inner {
+      width: min(var(--container), calc(100% - 32px));
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 72px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 40% 35%, #ffd8ae 0%, #ffb26b 32%, #f08e49 62%, #ffffff 100%);
+      box-shadow: 0 12px 26px rgba(240, 142, 73, 0.18);
+    }
+
+    .brand-strong {
+      display: block;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .nav a {
+      padding: 9px 14px;
+      border-radius: var(--radius-pill);
+      border: 1px solid transparent;
+      font-size: 13px;
+      color: var(--muted);
+      transition: background-color 0.22s ease, border-color 0.22s ease, color 0.22s ease;
+    }
+
+    .nav a:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.68);
+      border-color: var(--line);
+    }
+
+    .hero {
+      padding: 64px 0 28px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.45fr 0.85fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .card {
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-main {
+      padding: 38px 38px 34px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.84)),
+        radial-gradient(circle at 12% 15%, rgba(255, 179, 128, 0.2), transparent 24%),
+        radial-gradient(circle at 88% 12%, rgba(168, 211, 255, 0.15), transparent 24%),
+        radial-gradient(circle at 78% 84%, rgba(152, 234, 189, 0.12), transparent 24%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-main::after {
+      content: "";
+      position: absolute;
+      inset: 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.58);
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 32px;
+      padding: 0 14px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--line-strong);
+      background: rgba(255, 255, 255, 0.75);
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      margin-bottom: 18px;
+    }
+
+    .hero-title {
+      margin: 0;
+      font-size: clamp(34px, 5vw, 62px);
+      line-height: 1.06;
+      letter-spacing: -0.03em;
+      font-weight: 800;
+      max-width: 820px;
+    }
+
+    .hero-title span {
+      display: block;
+    }
+
+    .lead {
+      margin: 22px 0 0;
+      max-width: 820px;
+      font-size: 17px;
+      color: #374151;
+    }
+
+    .hero-actions {
+      margin-top: 28px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 20px;
+      border-radius: var(--radius-pill);
+      font-size: 14px;
+      font-weight: 600;
+      transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .btn-primary {
+      color: #ffffff;
+      background: var(--black);
+      border: 1px solid var(--black);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      background: #171717;
+    }
+
+    .btn-secondary {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid var(--line-strong);
+    }
+
+    .btn-secondary:hover {
+      transform: translateY(-1px);
+      background: #ffffff;
+    }
+
+    .hero-meta {
+      margin-top: 26px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .meta-box {
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(229, 231, 235, 0.95);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .meta-kicker {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .meta-value {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .hero-side {
+      display: grid;
+      gap: 18px;
+    }
+
+    .signal-card,
+    .figure-card {
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .signal-card::before,
+    .figure-card::before {
+      content: "";
+      position: absolute;
+      inset: auto -40px -40px auto;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 196, 146, 0.22), transparent 70%);
+      pointer-events: none;
+    }
+
+    .figure-shell {
+      width: 124px;
+      height: 124px;
+      margin-bottom: 18px;
+      position: relative;
+    }
+
+    .figure-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 208, 158, 0.6) 0%, rgba(255, 255, 255, 0) 72%);
+      animation: pulse 3.8s ease-in-out infinite;
+    }
+
+    .figure-core {
+      position: absolute;
+      inset: 16px;
+      border-radius: 44% 44% 52% 52% / 42% 42% 58% 58%;
+      background: linear-gradient(180deg, #ffd7ad 0%, #ffb86d 46%, #ef8b47 100%);
+      box-shadow: 0 18px 34px rgba(239, 139, 71, 0.2);
+      animation: floaty 3.8s ease-in-out infinite;
+    }
+
+    .figure-face {
+      position: absolute;
+      inset: 36px 36px 34px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .eye {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #fff7e6;
+      box-shadow: 0 0 10px rgba(255, 247, 230, 0.7);
+    }
+
+    .wave-strip {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 6px;
+      align-items: end;
+      height: 80px;
+      margin: 18px 0 12px;
+    }
+
+    .wave-strip span {
+      display: block;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(17, 24, 39, 0.16), rgba(17, 24, 39, 0.48));
+      animation: rise 2.8s ease-in-out infinite;
+      transform-origin: bottom;
+    }
+
+    .wave-strip span:nth-child(1) { height: 26%; animation-delay: 0.1s; }
+    .wave-strip span:nth-child(2) { height: 66%; animation-delay: 0.3s; }
+    .wave-strip span:nth-child(3) { height: 42%; animation-delay: 0.5s; }
+    .wave-strip span:nth-child(4) { height: 74%; animation-delay: 0.7s; }
+    .wave-strip span:nth-child(5) { height: 38%; animation-delay: 0.2s; }
+    .wave-strip span:nth-child(6) { height: 82%; animation-delay: 0.4s; }
+    .wave-strip span:nth-child(7) { height: 46%; animation-delay: 0.6s; }
+    .wave-strip span:nth-child(8) { height: 68%; animation-delay: 0.8s; }
+    .wave-strip span:nth-child(9) { height: 35%; animation-delay: 0.1s; }
+    .wave-strip span:nth-child(10) { height: 77%; animation-delay: 0.25s; }
+    .wave-strip span:nth-child(11) { height: 51%; animation-delay: 0.45s; }
+    .wave-strip span:nth-child(12) { height: 63%; animation-delay: 0.65s; }
+
+    .side-title {
+      margin: 0 0 10px;
+      font-size: 20px;
+      line-height: 1.25;
+    }
+
+    .side-text,
+    .paragraph,
+    .list-text,
+    .table-note,
+    .mini-copy {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .section {
+      padding: 28px 0 0;
+    }
+
+    .section-head {
+      margin-bottom: 18px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.12;
+      letter-spacing: -0.03em;
+    }
+
+    .section-intro {
+      margin: 14px 0 0;
+      max-width: 860px;
+      font-size: 16px;
+      color: #4b5563;
+    }
+
+    .bento {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .span-12 { grid-column: span 12; }
+    .span-8 { grid-column: span 8; }
+    .span-7 { grid-column: span 7; }
+    .span-6 { grid-column: span 6; }
+    .span-5 { grid-column: span 5; }
+    .span-4 { grid-column: span 4; }
+
+    .panel {
+      padding: 28px;
+      min-height: 100%;
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 12px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--line-strong);
+      background: rgba(255, 255, 255, 0.8);
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .panel h3 {
+      margin: 0 0 14px;
+      font-size: 24px;
+      line-height: 1.18;
+      letter-spacing: -0.02em;
+    }
+
+    .panel p {
+      margin: 0 0 14px;
+      font-size: 15px;
+      color: #4b5563;
+      max-width: 68ch;
+    }
+
+    .two-col-copy {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .quote-box {
+      padding: 22px;
+      border-radius: 20px;
+      border: 1px solid rgba(229, 231, 235, 0.95);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.7));
+    }
+
+    .quote-box strong {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    .bullet-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .bullet-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      color: #4b5563;
+      font-size: 14px;
+    }
+
+    .bullet-item::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #111827;
+      margin-top: 9px;
+      flex: 0 0 auto;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .metric {
+      padding: 18px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.74);
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 30px;
+      line-height: 1;
+      margin-bottom: 10px;
+      letter-spacing: -0.03em;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 12px;
+    }
+
+    .flow-step {
+      padding: 18px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.8);
+      position: relative;
+    }
+
+    .flow-step strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+
+    .flow-step small {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 0 10px;
+      border-radius: var(--radius-pill);
+      background: #111827;
+      color: #ffffff;
+      font-size: 11px;
+      margin-bottom: 12px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.74);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    th,
+    td {
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(229, 231, 235, 0.9);
+      vertical-align: top;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: rgba(249, 250, 251, 0.84);
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .stage-grid,
+    .ethics-grid,
+    .deliver-grid,
+    .join-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 8px;
+    }
+
+    .mini-card {
+      padding: 22px;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.78);
+    }
+
+    .mini-card h4 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .mini-card p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .closing {
+      padding: 28px;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 20px;
+      align-items: center;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.82)),
+        radial-gradient(circle at 90% 10%, rgba(150, 208, 255, 0.1), transparent 24%),
+        radial-gradient(circle at 10% 86%, rgba(255, 190, 146, 0.12), transparent 26%);
+    }
+
+    .closing h3 {
+      margin: 0 0 16px;
+      font-size: clamp(26px, 3vw, 36px);
+      line-height: 1.15;
+    }
+
+    .closing p {
+      margin: 0;
+      font-size: 15px;
+      color: #4b5563;
+      max-width: 680px;
+    }
+
+    .closing-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 14px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--line-strong);
+      background: rgba(255, 255, 255, 0.85);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .closing-side {
+      padding: 22px;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.82);
+    }
+
+    .closing-side-title {
+      display: block;
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+
+    .footer {
+      padding: 24px 0 48px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .footer-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 18px;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 18px;
+      border-top: 1px solid rgba(229, 231, 235, 0.9);
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.72s ease, transform 0.72s ease;
+    }
+
+    .reveal.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(0.96); opacity: 0.72; }
+      50% { transform: scale(1.06); opacity: 1; }
+    }
+
+    @keyframes floaty {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
+    @keyframes rise {
+      0%, 100% { transform: scaleY(0.82); opacity: 0.55; }
+      50% { transform: scaleY(1.08); opacity: 0.92; }
+    }
+
+    @media (max-width: 1080px) {
+      .hero-grid,
+      .closing,
+      .two-col-copy {
+        grid-template-columns: 1fr;
+      }
+
+      .metric-grid,
+      .flow,
+      .stage-grid,
+      .ethics-grid,
+      .deliver-grid,
+      .join-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .span-8,
+      .span-7,
+      .span-6,
+      .span-5,
+      .span-4 {
+        grid-column: span 12;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .topbar {
+        position: static;
+      }
+
+      .topbar-inner {
+        align-items: flex-start;
+        padding: 14px 0;
+        flex-direction: column;
+      }
+
+      .nav {
+        justify-content: flex-start;
+      }
+
+      .hero {
+        padding-top: 42px;
+      }
+
+      .hero-main,
+      .signal-card,
+      .figure-card,
+      .panel,
+      .closing {
+        padding: 22px;
+      }
+
+      .lead,
+      .section-intro,
+      .panel p,
+      .table-note,
+      .list-text,
+      .mini-card p,
+      .mini-copy,
+      .side-text {
+        font-size: 15px;
+        line-height: 1.84;
+      }
+
+      .nav a {
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.7);
+        border-color: var(--line);
+      }
+
+      .hero-meta,
+      .metric-grid,
+      .flow,
+      .stage-grid,
+      .ethics-grid,
+      .deliver-grid,
+      .join-grid,
+      .two-col-copy {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-title {
+        font-size: 34px;
+      }
+
+      .section-title {
+        font-size: 30px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <div class="noise"></div>
+
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="brand-mark"></div>
+          <div>
+            <span class="brand-strong">星伴 SparkMate</span>
+            SRTP 项目叙述页 / 面向阅读的可视化说明
+          </div>
+        </div>
+        <nav class="nav">
+          <a href="#overview">项目概述</a>
+          <a href="#problem">研究问题</a>
+          <a href="#design">研究设计</a>
+          <a href="#product">产品机制</a>
+          <a href="#ethics">伦理与边界</a>
+          <a href="#join">实施与参与</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="hero" id="overview">
+        <div class="hero-grid">
+          <article class="card hero-main reveal">
+            <div class="eyebrow">Technology / Education / Mental Wellbeing / SRTP</div>
+            <h1 class="hero-title">
+              <span>星伴 SparkMate 项目说明</span>
+              <span>关于研究什么，为什么研究，以及准备怎么研究。</span>
+            </h1>
+            <p class="lead">
+              星伴 SparkMate 是一个面向大学生的微信小程序研究项目。它不做心理治疗，也不想变成一款只会催打卡的学习工具。我们更关心的是另一件事：如果把一个低负担、能长期使用、带一点陪伴感的 AI 代理放进大学生的日常生活里，它会不会慢慢影响他们的学习行为、情绪状态和对校园生活的主观感受。
+            </p>
+            <p class="lead">
+              这个项目一半是产品，一半是研究工具。产品层面，它用“微光崽”作为陪伴角色，把专注、打卡和聊天这些轻量动作放进学生每天本来就在过的生活里。研究层面，它会把这些日常使用过程整理成连续数据，再和前后测量表、学业指标放在一起看。我们最后想回答的，是一个很实际的问题：这种 AI 陪伴在高校场景里到底有没有用，如果有，它大概是通过什么方式起作用的。
+            </p>
+            <div class="hero-actions">
+              <a class="btn btn-primary" href="#design">继续阅读研究设计</a>
+              <a class="btn btn-secondary" href="#product">查看产品如何承载研究</a>
+            </div>
+            <div class="hero-meta">
+              <div class="meta-box">
+                <span class="meta-kicker">项目类型</span>
+                <div class="meta-value">SRTP 本科生科研训练项目</div>
+              </div>
+              <div class="meta-box">
+                <span class="meta-kicker">研究对象</span>
+                <div class="meta-value">大学生日常学习与情绪状态</div>
+              </div>
+              <div class="meta-box">
+                <span class="meta-kicker">核心方法</span>
+                <div class="meta-value">纵向自然实验 + 剂量效应分析</div>
+              </div>
+            </div>
+          </article>
+
+          <aside class="hero-side">
+            <section class="card figure-card reveal">
+              <div class="eyebrow">Character Carrier</div>
+              <div class="figure-shell" aria-hidden="true">
+                <div class="figure-ring"></div>
+                <div class="figure-core"></div>
+                <div class="figure-face">
+                  <span class="eye"></span>
+                  <span class="eye"></span>
+                </div>
+              </div>
+              <h2 class="side-title">微光崽不是吉祥物，它是研究交互的情感接口。</h2>
+              <p class="side-text">
+                我们选择用一个温和、容易让人产生情感投射的数字角色来承载整个系统，是因为学生通常更愿意接近一个“陪着你的人”，而不是一个“盯着你的人”。这件事听起来像设计细节，其实会直接影响学生愿不愿意继续用、愿不愿意表达，以及能不能留下长期数据。
+              </p>
+            </section>
+
+            <section class="card signal-card reveal">
+              <div class="eyebrow">Readable Visualization</div>
+              <h2 class="side-title">项目将按完整逻辑展开，而不是只展示几个零散卖点。</h2>
+              <div class="wave-strip" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <p class="side-text">
+                下文会把研究背景、问题、产品机制、研究设计、变量、样本流程、风险控制、伦理边界和预期产出依次讲清楚。读完以后，基本就能知道这项 SRTP 到底在研究什么，怎么做，以及它为什么值得做。
+              </p>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section" id="problem">
+        <div class="section-head reveal">
+          <div class="eyebrow">01 / WHY THIS PROJECT EXISTS</div>
+          <h2 class="section-title">我们不是在泛泛谈“心理健康”，而是在聚焦大学生活里那些可测量、却常被忽略的微观困境。</h2>
+          <p class="section-intro">
+            在高校里，很多学生其实没有严重到需要正式心理干预，但他们也绝对谈不上轻松。任务压着走，注意力很散，作息也乱，情绪时不时往下掉，却又很难准确说清自己怎么了。这样的人通常不会主动去求助，但很可能愿意接受一种不费力、也不太有压力的数字陪伴。
+          </p>
+        </div>
+
+        <div class="bento">
+          <article class="card panel span-7 reveal">
+            <div class="kicker">问题定义</div>
+            <h3>我们关心的不是给学生贴标签，而是想看 AI 陪伴会不会慢慢影响他们每天的行为和状态。</h3>
+            <div class="two-col-copy">
+              <div>
+                <p>
+                  学校现有的支持系统当然重要，比如课程管理、咨询服务和危机干预。但这些东西大多出现在问题已经很明显之后。星伴想碰的是更早一点的那一层：今天有没有坐下来开始学，今晚有没有顺手确认一下自己的情绪，这几天的作息和节律是不是正在慢慢稳下来。
+                </p>
+                <p>
+                  这也决定了我们的研究重点会放在过程上，而不只是盯着最后那个结果分数。我们更想看学生在一个学期里是怎么一点点变化的：专注时长有没有变化，情绪曲线怎么波动，AI 聊天常常在什么情境下发生，它带来的缓解是短暂的还是能持续一段时间，最后这些过程数据能不能和学业状态、量表结果对得上。
+                </p>
+              </div>
+              <div>
+                <div class="quote-box">
+                  <strong>一句话概括研究核心</strong>
+                  <div class="paragraph">
+                    我们想验证的是：一个低负担、带陪伴感的 AI 代理，能不能在不增加学生压力的前提下，对学习行为和情绪状态带来一些正向变化；如果能，这种变化又是怎么发生的。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="card panel span-5 reveal">
+            <div class="kicker">校园真实痛点</div>
+            <h3>我们面对的，其实是很多状态不太稳、但又说不上“出问题”的普通学生。</h3>
+            <div class="bullet-list">
+              <div class="bullet-item">学习任务多，但缺少稳定节律，容易在短视频、即时消息和琐碎事务中被切碎注意力。</div>
+              <div class="bullet-item">情绪并非持续性崩溃，而是经常处在一种模糊、隐约、难命名的低落与疲惫之中。</div>
+              <div class="bullet-item">很多人不愿主动寻求正式心理支持，但愿意接受“不像治疗、也不像管理”的轻量陪伴。</div>
+              <div class="bullet-item">学校需要的不是一套空泛口号，而是能被积累、被分析、被解释的数据证据。</div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="design">
+        <div class="section-head reveal">
+          <div class="eyebrow">02 / RESEARCH DESIGN</div>
+          <h2 class="section-title">研究路径不是随机想的，而是在可行性、伦理风险与学术解释力之间做出的平衡。</h2>
+          <p class="section-intro">
+            这套研究设计不是拍脑袋定的。我们没有直接做高门槛的随机对照试验，也没有只做一个简单的前后测。最后选了纵向自然实验加剂量效应分析，因为这条路更贴近真实校园环境，也更符合现阶段的资源和伦理条件。
+          </p>
+        </div>
+
+        <div class="bento">
+          <article class="card panel span-8 reveal">
+            <div class="kicker">为什么选择这种方法</div>
+            <h3>我们采用“纵向自然实验 + 剂量效应分析”，主要是因为它既不脱离真实场景，也比单纯前后对比更有解释力。</h3>
+            <p>
+              随机对照试验看上去最标准，但放到校园里，问题也很直接：样本不好招，伦理上也很难解释为什么一部分学生不能使用相关功能，实施周期长，班级之间还容易互相影响。反过来，如果只是做前后测，最后又很难说清变化到底从哪里来，也很难分辨高参与和低参与的差别。
+            </p>
+            <p>
+              所以我们的做法是让学生在自然环境里真实使用小程序，再根据整个研究周期里的使用频率、稳定性和交互深度，划出不同剂量层级，然后把这些剂量指标和 PHQ-9、GAD-7 以及学业排名百分位的变化放在一起分析。这样做的好处很现实：不打断真实生活，也能看出“用得更多的人，是不是真的变化更明显”。
+            </p>
+            <div class="metric-grid">
+              <div class="metric">
+                <strong>80-120</strong>
+                <span>计划招募样本量</span>
+              </div>
+              <div class="metric">
+                <strong>3</strong>
+                <span>量表测量时点：T0 / T1 / T2</span>
+              </div>
+              <div class="metric">
+                <strong>68</strong>
+                <span>根据功效分析估算的最小有效样本</span>
+              </div>
+              <div class="metric">
+                <strong>1 学期</strong>
+                <span>覆盖周期，确保行为与结果可积累</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="card panel span-4 reveal">
+            <div class="kicker">研究假设</div>
+            <h3>研究并不空泛，它有明确的因果方向假设。</h3>
+            <div class="bullet-list">
+              <div class="bullet-item">使用一致性越高，学生的情绪状态改善越明显。</div>
+              <div class="bullet-item">高质量专注行为与更稳定的学习节律相关。</div>
+              <div class="bullet-item">AI 聊天并非装饰，它可能对即时情绪改善产生短期效果。</div>
+              <div class="bullet-item">综合使用强度越高，期末时的学业表现与量表变化越值得关注。</div>
+            </div>
+          </article>
+
+          <article class="card panel span-12 reveal">
+            <div class="kicker">研究流程</div>
+            <h3>从入组到学期末，整项研究都会尽量少打扰学生原本的生活。</h3>
+            <div class="flow">
+              <div class="flow-step">
+                <small>T0 / 基线</small>
+                <strong>入组与同意</strong>
+                <div class="list-text">学生将通过后续确认的招募入口进入研究，入口可能是班级或课程组织，也可能保留自愿报名方式；在入组后完成知情同意、基础信息录入，并填写 PHQ-9 与 GAD-7，形成研究起点。</div>
+              </div>
+              <div class="flow-step">
+                <small>日常 / 过程</small>
+                <strong>自然使用</strong>
+                <div class="list-text">学生在真实生活里使用专注模式、情绪打卡与 AI 聊天功能，系统自动记录频率、持续时长、触发时机和交互结果。</div>
+              </div>
+              <div class="flow-step">
+                <small>T1 / 中期</small>
+                <strong>第 30 天复测</strong>
+                <div class="list-text">再次测量 PHQ-9 与 GAD-7，评估中期变化，并观察不同剂量组之间的初步差异。</div>
+              </div>
+              <div class="flow-step">
+                <small>T2 / 终点</small>
+                <strong>学期末终测</strong>
+                <div class="list-text">完成终测并结合学业排名百分位等指标，对整个研究周期形成完整分析闭环。</div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="variables">
+        <div class="section-head reveal">
+          <div class="eyebrow">03 / VARIABLES AND EVIDENCE</div>
+          <h2 class="section-title">我们并不满足于“感觉有效”，而是提前定义了变量、指标与数据来源。</h2>
+          <p class="section-intro">
+            如果最后只说“大家觉得还不错”，那研究说服力是不够的。星伴会把产品里的关键交互都落到具体字段上，用这些字段把使用剂量、情绪状态和结果变量连起来。
+          </p>
+        </div>
+
+        <div class="bento">
+          <article class="card panel span-12 reveal">
+            <div class="kicker">变量对照表</div>
+            <h3>这些数据不是随手记日志，而是围绕研究问题提前设计出来的。</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>变量类型</th>
+                    <th>代表字段</th>
+                    <th>研究含义</th>
+                    <th>数据来源</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>使用剂量</td>
+                    <td>checkin_consistency / weekly_focus_total_min / ai_chat_engagement</td>
+                    <td>衡量学生与系统接触的频率、时长与深度，用于构建剂量层级。</td>
+                    <td>小程序行为日志</td>
+                  </tr>
+                  <tr>
+                    <td>专注行为</td>
+                    <td>focus_duration_sec / distraction_count / long_break_count</td>
+                    <td>反映学习过程中的持续性、被打断情况与自我调节执行度。</td>
+                    <td>专注模式自动记录</td>
+                  </tr>
+                  <tr>
+                    <td>情绪过程</td>
+                    <td>mood_score / stress_tag / mood_delta</td>
+                    <td>描绘学生在每日情绪上的短期波动与主观压力来源。</td>
+                    <td>晚间情绪打卡与聊天前后测</td>
+                  </tr>
+                  <tr>
+                    <td>心理结果</td>
+                    <td>PHQ9_score / GAD7_score</td>
+                    <td>用于评估焦虑、抑郁症状是否在研究周期中发生变化。</td>
+                    <td>T0 / T1 / T2 标准量表</td>
+                  </tr>
+                  <tr>
+                    <td>学业结果</td>
+                    <td>GPA_rank_percentile_delta</td>
+                    <td>观察学习行为变化是否可能与学业结果关联，而不是只停留在感受层面。</td>
+                    <td>期末成绩排名换算</td>
+                  </tr>
+                  <tr>
+                    <td>AI 干预效果</td>
+                    <td>trigger_type / conversation_turns / sentiment_shift_val</td>
+                    <td>识别 AI 主动或被动介入时，是否对即时情绪改善有贡献。</td>
+                    <td>聊天模块过程数据</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="table-note">
+              说得更直白一点，星伴不是只想记住最后那个结果，而是想把整条路径留下来：学生来没来，来了多久，来的时候状态怎么样，AI 是什么时候介入的，介入之后有没有变化，以及这些变化最后能不能和学业、量表结果对应上。
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="product">
+        <div class="section-head reveal">
+          <div class="eyebrow">04 / PRODUCT AS RESEARCH INSTRUMENT</div>
+          <h2 class="section-title">产品不是研究的附属物，恰恰相反，产品本身就是研究得以发生的载体。</h2>
+          <p class="section-intro">
+            产品做得太重，学生很快就会跑掉；做得太轻，又采不到足够有用的数据。星伴现在的功能结构，就是围着这个平衡慢慢搭起来的。
+          </p>
+        </div>
+
+        <div class="bento">
+          <article class="card panel span-6 reveal">
+            <div class="kicker">功能一 / 专注模式</div>
+            <h3>专注模式最重要的作用，是把学习行为变成可以连续观察的数据。</h3>
+            <p>
+              对用户来说，这个功能看上去就是一个陪伴式专注计时器。打开以后，微光崽待在屏幕中央，陪着学生进入学习状态。对研究来说，这里记录的却是最核心的行为过程数据，比如持续专注时长、离开页面次数、长时间中断情况，以及一天里、一周里专注节律怎么变化。
+            </p>
+            <p>
+              这些数据的价值在于，它们比“今天学了没有”更细，也比“这次考试多少分”出现得更早。换句话说，结果还没出来，我们就能先看到学习行为本身是不是在往更稳定的方向走。
+            </p>
+          </article>
+
+          <article class="card panel span-6 reveal">
+            <div class="kicker">功能二 / 晚间情绪打卡</div>
+            <h3>情绪打卡的意义，在于用很低的成本把主观状态连续记录下来。</h3>
+            <p>
+              我们没有设计很长的问卷，也不想让学生天天写日记。星伴把这件事压缩成一个晚上的小动作：在限定时间段里用滑块表达当天感受，再用几个简短标签标一下压力来源。这样做的好处很直接，负担低，但关键信息还在，情绪轨迹也能被长期看见。
+            </p>
+            <p>
+              对研究来说，这个模块补上了专注数据缺的那一半。专注模块告诉我们学生做了什么，情绪模块告诉我们他们是在什么心情和状态下做这些事。两边放在一起，很多变化才解释得通。
+            </p>
+          </article>
+
+          <article class="card panel span-7 reveal">
+            <div class="kicker">功能三 / AI 伙伴聊天</div>
+            <h3>聊天模块是最接近“陪伴式干预”本身的部分。</h3>
+            <p>
+              这里的 AI 不扮演权威导师，也不负责给复杂建议。它更像一个一直在场、愿意听你说话、稍微带点温度的数字角色。用户可以主动点进去聊天，也可能在情绪持续偏低、长时间没打卡或专注明显下滑的时候，收到系统发来的温和问候。
+            </p>
+            <p>
+              关键在于，聊天前后都可以接一个很短的情绪评分，所以这部分不只是体验亮点，也是可以被分析的干预节点。我们能看到什么类型的触发更容易带来情绪缓和，几轮对话更容易让人愿意开口，以及哪些学生更愿意把系统当作一个低压力的出口。
+            </p>
+          </article>
+
+          <article class="card panel span-5 reveal">
+            <div class="kicker">功能四 / 赛博共振</div>
+            <h3>这部分会放到第二阶段，暂时不放进 MVP 核心研究。</h3>
+            <p>
+              赛博共振是一个很有想象力的匿名互助设想。它想让作息相近的陌生学生形成一种很轻的连接，通过一些简单提示感受到“不是只有我一个人在努力”。但这部分会引入额外的社交机制，也可能带来新的伦理和成瘾风险。
+            </p>
+            <p>
+              所以当前版本里，我们把它先收起来，留到第二阶段再展开。这样 MVP 会更聚焦，研究解释也不会被太多新变量冲淡。
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="implementation">
+        <div class="section-head reveal">
+          <div class="eyebrow">05 / EXECUTION PLAN</div>
+          <h2 class="section-title">这项研究不是停留在想法层面，它已经具备可以落地执行的实施框架。</h2>
+          <p class="section-intro">
+            从技术栈到招募方式，再到后台管理和数据导出，这个项目已经不是停留在概念层面的提案了，它基本具备了往下执行的框架。
+          </p>
+        </div>
+
+        <div class="bento">
+          <article class="card panel span-6 reveal">
+            <div class="kicker">实施方式</div>
+            <h3>招募方式目前保留为待确认项，页面只陈述现阶段更稳妥的执行设想。</h3>
+            <div class="stage-grid">
+              <div class="mini-card">
+                <h4>招募入口</h4>
+                <p>当前有两种可行路径：一是以班级、课程或辅导员组织方式集中招募；二是开放学生自愿报名。最终采用哪一种，将以后续院系协作条件与执行便利性为准。</p>
+              </div>
+              <div class="mini-card">
+                <h4>参与成本</h4>
+                <p>日常使用尽量控制在“零负担”区间，避免因为操作复杂而引发掉队或样本污染。</p>
+              </div>
+              <div class="mini-card">
+                <h4>研究激励</h4>
+                <p>以德育素拓学时等校园认可形式进行激励，使参与具有现实回报而非单纯依赖热情。</p>
+              </div>
+              <div class="mini-card">
+                <h4>后台支持</h4>
+                <p>配套研究管理后台，用于查看仪表盘、监控样本进展、筛选异常数据与导出 CSV。</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="card panel span-6 reveal">
+            <div class="kicker">技术承载</div>
+            <h3>系统形态已经比较清楚：微信小程序前端、云函数中台、CloudBase 数据库和研究后台协同工作。</h3>
+            <p>
+              选择微信原生小程序，主要是因为它更贴近学生的使用习惯，进入成本低，也不用额外下载。后端用云开发架构，是为了把部署和维护负担压下来，更适合 SRTP 的资源条件。研究后台主要给老师和团队成员用，用来追踪样本、导出数据和看趋势，不直接面向普通学生。
+            </p>
+            <p>
+              至于 LLM 选型，我们现在故意保留成“待人类确认”。因为这不只是技术问题，还会牵涉预算、合规和后续稳定性。现阶段先把研究逻辑和系统骨架搭稳，比急着定模型更重要。
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="ethics">
+        <div class="section-head reveal">
+          <div class="eyebrow">06 / ETHICS AND BOUNDARIES</div>
+          <h2 class="section-title">越是做陪伴型研究，越不能模糊边界。我们需要的不是“看起来温暖”，而是“实际可控”。</h2>
+          <p class="section-intro">
+            星伴必须说清楚自己不是什么。它不是治疗工具，不提供医疗建议，也不能替代学校现有的正式心理支持资源。边界一旦说不清，后面很多事情都会变得危险。
+          </p>
+        </div>
+
+        <div class="bento">
+          <article class="card panel span-6 reveal">
+            <div class="kicker">系统边界</div>
+            <h3>产品可以让人觉得愿意靠近，但不能把人往过度依赖的方向推。</h3>
+            <div class="ethics-grid">
+              <div class="mini-card">
+                <h4>不是治疗系统</h4>
+                <p>系统提供的是情绪陪伴与学习支持，而不是诊断、治疗或专业咨询结论。</p>
+              </div>
+              <div class="mini-card">
+                <h4>高风险转介</h4>
+                <p>当量表达到高风险阈值时，优先推送校内外专业资源，而不是继续引导 AI 深聊。</p>
+              </div>
+              <div class="mini-card">
+                <h4>反成瘾设计</h4>
+                <p>功能节奏控制在“轻触达、低打扰”，避免靠连续奖励制造黏性焦虑。</p>
+              </div>
+              <div class="mini-card">
+                <h4>数据最小化</h4>
+                <p>只收集与研究问题直接相关的数据，不把系统做成无边界的行为监控器。</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="card panel span-6 reveal">
+            <div class="kicker">研究伦理</div>
+            <h3>所有数据都应该服务于明确问题，而且必须建立在知情、匿名和可退出的前提下。</h3>
+            <p>
+              学生在入组时应该清楚知道，哪些数据会被记录，为什么要记录，谁能访问，怎么脱敏，中途能不能退出，退出后数据怎么处理。我们追求的从来不是“采得越多越好”，而是“采到足够回答问题就可以”。
+            </p>
+            <p>
+              所以伦理不是最后补一页说明那么简单，它一开始就应该嵌在设计里。边界画得越清楚，后面的研究结果才越站得住。
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="join">
+        <div class="section-head reveal">
+          <div class="eyebrow">07 / DELIVERABLES AND PARTICIPATION</div>
+          <h2 class="section-title">最终，我们希望这项 SRTP 既能产出论文，也能留下一个真正可继续生长的系统原型。</h2>
+          <p class="section-intro">
+            一个好的学生科研项目，不该只在答辩那天看起来漂亮。它最好还能留下几样真正有用的东西：学术发现、可运行的产品原型，以及后面还能继续往下做的基础。
+          </p>
+        </div>
+
+        <div class="bento">
+          <article class="card panel span-6 reveal">
+            <div class="kicker">预期产出</div>
+            <h3>我们想留下的，不只是“项目完成”这个结果，而是后面还能继续用的成果。</h3>
+            <div class="deliver-grid">
+              <div class="mini-card">
+                <h4>研究论文</h4>
+                <p>围绕 AI 陪伴、大学生情绪与学习行为的关系，形成具有数据支撑的学术表达。</p>
+              </div>
+              <div class="mini-card">
+                <h4>功能原型</h4>
+                <p>完成微信小程序 MVP 与研究后台，证明系统设计具备真实可用性。</p>
+              </div>
+              <div class="mini-card">
+                <h4>数据资产</h4>
+                <p>沉淀结构化研究数据，为后续扩展研究与第二阶段功能探索提供基础。</p>
+              </div>
+              <div class="mini-card">
+                <h4>方法模板</h4>
+                <p>为“轻量 AI agent 如何进入教育情境”提供可借鉴的方法论框架。</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="card panel span-6 reveal">
+            <div class="kicker">参与方式</div>
+            <h3>如果把这项研究讲给学生听，我们希望它听起来清楚、轻松，也确实值得参与。</h3>
+            <div class="join-grid">
+              <div class="mini-card">
+                <h4>第一步：加入研究</h4>
+                <p>通过最终确认的研究入口完成报名与知情同意。这个入口可以是班级统一组织，也可以是学生自愿报名通道。</p>
+              </div>
+              <div class="mini-card">
+                <h4>第二步：日常使用</h4>
+                <p>在真实生活中使用专注、情绪打卡和聊天功能，不额外改变原有作息。</p>
+              </div>
+              <div class="mini-card">
+                <h4>第三步：阶段复测</h4>
+                <p>在规定时间完成量表复测，帮助团队把过程数据与结果数据建立对应。</p>
+              </div>
+              <div class="mini-card">
+                <h4>第四步：形成价值</h4>
+                <p>你的参与不仅会转化为研究成果，也会帮助未来校园支持系统设计更贴近学生真实处境。</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="card closing span-12 reveal">
+            <div>
+              <div class="eyebrow">Closing Statement</div>
+              <h3>星伴想回答的，其实是一个很具体的问题：AI 能不能用一种克制、可信、低打扰的方式进入大学生的真实生活，并带来可以被验证的积极影响。</h3>
+              <p>
+                这也是我们把它做成 SRTP 项目的原因。它离现实很近，也确实有研究价值，同时又足够复杂，能把产品设计、交互逻辑、数据结构、研究方法和伦理判断真正放到一张桌子上。我们希望它最后留下来的，不只是一个概念，而是一套经得起认真验证的方案。
+              </p>
+              <div class="closing-badges">
+                <span class="badge">微信小程序原型</span>
+                <span class="badge">纵向自然实验</span>
+                <span class="badge">剂量效应分析</span>
+                <span class="badge">匿名与伦理优先</span>
+              </div>
+            </div>
+            <div class="closing-side">
+              <strong class="closing-side-title">适用场景</strong>
+              <div class="mini-copy">这份项目说明可以直接用于答辩前置介绍、老师汇报、队内共识建立、招募宣讲和对外说明。它不替代论文或开发文档，但很适合作为统一的叙述入口。</div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <div class="footer-row">
+          <span>星伴 SparkMate · 2026 · SRTP 项目说明页</span>
+          <span>研究主轴：AI 代理陪伴对大学生学习行为与情绪状态的影响</span>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+        }
+      });
+    }, { threshold: 0.12 });
+
+    document.querySelectorAll(".reveal").forEach((element) => observer.observe(element));
+  </script>
+</body>
+</html>

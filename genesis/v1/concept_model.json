@@ -1,0 +1,145 @@
+{
+  "project": "SparkMate (星伴)",
+  "version": "v1",
+  "modeled_at": "2026-03-09",
+  "entities": [
+    {
+      "name": "User",
+      "type": "核心实体",
+      "necessity": "必须",
+      "description": "在校大学生，系统的核心使用者与研究对象",
+      "attributes": ["user_id", "nickname", "school", "grade", "major", "schedule_slots", "consent_given", "onboard_at", "high_risk_flag"]
+    },
+    {
+      "name": "MicroguangZai (微光崽)",
+      "type": "UI实体 / 视觉核心",
+      "necessity": "必须",
+      "description": "用户的虚拟伴侣，与用户情绪和专注行为深度绑定的几何动画角色；其外观状态反映用户行为数据",
+      "attributes": ["halo_color", "float_effect", "desk_items", "current_state (idle/focus/worried/happy)", "level"]
+    },
+    {
+      "name": "FocusSession (专注会话)",
+      "type": "行为数据实体",
+      "necessity": "必须",
+      "description": "一次完整的专注挂机记录，包含时长、中断次数等关键研究变量",
+      "attributes": ["session_id", "user_id", "start_at", "end_at", "focus_duration_sec", "distraction_count", "distraction_total_sec", "long_break_count", "context_tag"]
+    },
+    {
+      "name": "MoodCheckin (情绪打卡)",
+      "type": "行为数据实体",
+      "necessity": "必须",
+      "description": "晚点名时段的每日情绪记录，包含滑块得分和压力归因标签",
+      "attributes": ["checkin_id", "user_id", "timestamp", "mood_score", "stress_tag", "week_index", "day_of_week"]
+    },
+    {
+      "name": "ScaleRecord (量表记录)",
+      "type": "研究数据实体",
+      "necessity": "必须",
+      "description": "PHQ-9 / GAD-7 心理量表的三次测量记录（T0/T1/T2）",
+      "attributes": ["scale_id", "user_id", "scale_type", "time_point", "total_score", "items", "completed_at", "high_risk_flag"]
+    },
+    {
+      "name": "ChatSession (AI聊天会话)",
+      "type": "干预数据实体",
+      "necessity": "必须",
+      "description": "用户与微光崽（LLM人设）的对话记录，区分主动/被动触发",
+      "attributes": ["session_id", "user_id", "trigger_type", "pre_mood_score", "post_mood_score", "sentiment_shift_val", "conversation_turns", "timestamp"]
+    },
+    {
+      "name": "ProactiveTrigger (主动关怀触发器)",
+      "type": "系统逻辑实体",
+      "necessity": "必须",
+      "description": "后台数据探针，检测连续低情绪+高中断率的用户，触发次日关怀弹框",
+      "attributes": ["trigger_id", "user_id", "trigger_at", "trigger_reason", "trigger_type", "delivered"]
+    },
+    {
+      "name": "CyberResonancePair (赛博共振对)",
+      "type": "社交实体 (Phase 2)",
+      "necessity": "可选",
+      "description": "两名用户的匿名配对，共享连击计数和戳一戳互动",
+      "attributes": ["pair_id", "user_a", "user_b", "streak_days", "poke_count_a", "poke_count_b", "last_active", "matched_at"]
+    },
+    {
+      "name": "ResearchAdmin (研究后台)",
+      "type": "系统实体",
+      "necessity": "必须",
+      "description": "研究团队专用管理界面，查看用户数据仪表盘和导出 CSV",
+      "attributes": ["admin_id", "permissions", "last_login"]
+    }
+  ],
+  "flows": [
+    { "from": "User", "action": "完成Onboarding + 签知情同意", "to": "User", "data": "consent_given=true, schedule_slots", "note": "同时触发 T0 量表推送" },
+    { "from": "User", "action": "进入专注模式", "to": "FocusSession", "data": "start_at, context_tag" },
+    { "from": "System (onHide/onShow)", "action": "记录中断", "to": "FocusSession", "data": "distraction_count+1, distraction_duration" },
+    { "from": "User", "action": "结束专注", "to": "FocusSession", "data": "end_at, 触发养成奖励计算" },
+    { "from": "System (21:30-23:00)", "action": "推送晚点名提醒", "to": "User", "data": "push notification" },
+    { "from": "User", "action": "滑动情绪滑块+选择压力标签", "to": "MoodCheckin", "data": "mood_score, stress_tag" },
+    { "from": "MoodCheckin", "action": "实时渲染颜色", "to": "MicroguangZai", "data": "UI状态变更灰蓝→暖橙" },
+    { "from": "System", "action": "T0/T1/T2时点推送量表", "to": "User", "data": "push + 弹框提醒" },
+    { "from": "User", "action": "填写PHQ9/GAD7", "to": "ScaleRecord", "data": "items[], total_score, time_point" },
+    { "from": "ScaleRecord (PHQ9≥15)", "action": "触发高风险处理", "to": "User", "data": "推送心理援助资源，标记 high_risk_flag=true，屏蔽AI聊天" },
+    { "from": "DataProbe (后台探针)", "action": "检测低情绪+高中断率", "to": "ProactiveTrigger", "data": "trigger_reason, 次日弹框" },
+    { "from": "User", "action": "点击伙伴聊天/主动触发弹框", "to": "ChatSession", "data": "trigger_type, pre_mood_score" },
+    { "from": "ChatSession", "action": "调用 LLM API", "to": "LLM (DeepSeek)", "data": "系统提示词+上下文" },
+    { "from": "LLM", "action": "返回关怀回复", "to": "User", "data": "微光崽人设回复" },
+    { "from": "ResearchAdmin", "action": "查询/导出数据", "to": "数据库", "data": "CSV/JSON格式研究数据" }
+  ],
+  "missing_components": [
+    {
+      "component": "通知系统 (Notification System)",
+      "category": "外部集成",
+      "priority": "高",
+      "reason": "晚点名提醒、量表推送、主动关怀弹框均依赖微信订阅消息或 Service Worker 推送，需要用户授权订阅消息权限"
+    },
+    {
+      "component": "用户认证系统 (Auth)",
+      "category": "认证授权",
+      "priority": "高",
+      "reason": "需要微信 OpenID 作为用户唯一标识，同时需要管理员账户（研究后台入口）"
+    },
+    {
+      "component": "数据探针定时任务 (Cron Job)",
+      "category": "业务逻辑",
+      "priority": "高",
+      "reason": "每日凌晨扫描用户行为数据，判断是否触发主动关怀，这是后台自动化的核心"
+    },
+    {
+      "component": "养成系统计算引擎",
+      "category": "业务逻辑",
+      "priority": "中",
+      "reason": "专注时长→经验值→解锁物品的计算规则需要明确定义，否则前端无法渲染微光崽状态"
+    },
+    {
+      "component": "高风险用户处理流程",
+      "category": "伦理合规",
+      "priority": "极高",
+      "reason": "PHQ9≥15 时必须屏蔽AI聊天、推送专业资源、后台通知研究团队，这是伦理红线"
+    },
+    {
+      "component": "数据匿名化模块",
+      "category": "安全隐私",
+      "priority": "高",
+      "reason": "后台存储使用 UUID，管理员后台导出数据需要脱敏，情绪/量表数据加密存储"
+    },
+    {
+      "component": "量表时点调度器",
+      "category": "业务逻辑",
+      "priority": "高",
+      "reason": "T0/T1（入组第28-32天）/T2（学期末前两周）的自动推送需要基于用户 onboard_at 动态计算"
+    },
+    {
+      "component": "LLM Token 成本控制",
+      "category": "运营成本",
+      "priority": "中",
+      "reason": "120人×平均N次对话×每次M tokens，需要估算月度 API 成本并设置每用户限额"
+    }
+  ],
+  "questions_for_user": [],
+  "assumptions": [
+    "LLM 使用 DeepSeek API（成本低、响应快、国内合规）",
+    "后端使用微信云开发（CloudBase）减少运维负担",
+    "研究后台以 Web 管理面板形式独立于小程序存在",
+    "所有用户均使用全功能，无人工分组，以使用强度自然分组做剂量-效应分析",
+    "赛博共振（Phase 2）暂不影响 MVP 数据结构设计，但数据库预留字段"
+  ]
+}
